@@ -1,0 +1,128 @@
+document.addEventListener('DOMContentLoaded', () => {
+  const nextPage = '../home/index.html';
+  document.querySelectorAll('button').forEach((button) => {
+    if (button.type === 'submit' || button.closest('form')) return;
+    button.addEventListener('click', () => {
+      window.location.href = nextPage;
+    });
+  });
+  document.querySelectorAll('form').forEach((form) => {
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const input = form.querySelector('input[name="name"]');
+      const message = form.querySelector('.form-message');
+      const name = input ? input.value.trim() : '';
+      if (!name) return;
+      localStorage.setItem('entertainmentUserName', name);
+      if (message) message.textContent = `Welcome, ${name}! Your details were saved on this browser.`;
+      form.reset();
+    });
+  });
+  const saved = localStorage.getItem('entertainmentUserName');
+  if (saved) document.querySelectorAll('.form-message').forEach((m) => m.textContent = `Welcome back, ${saved}!`);
+});
+
+(function(){
+  const routes = {
+    'gaming-hub': ['home','store','details','library'],
+    'podcast-player': ['home','discover','episode','library'],
+    'concert-booking': ['home','events','seatmap','checkout'],
+    'creator-studio': ['dashboard','content','analytics','settings'],
+    'anime-streaming': ['home','catalog','watch','watchlist'],
+    'audiobook-library': ['home','discover','player','library'],
+    'sports-live': ['home','matches','match-center','profile'],
+    'cinema-membership': ['home','benefits','bookings','account'],
+    'foodie-go': ['home','restaurants','menu','checkout'],
+    'travel-mate': ['home','destinations','hotel-details','booking'],
+    'fit-life': ['home','workouts','workout-details','profile'],
+    'photo-verse': ['home','explore','upload','profile']
+  };
+  function toast(message){
+    let t=document.getElementById('toast');
+    if(!t){t=document.createElement('div');t.id='toast';t.className='toast';document.body.appendChild(t)}
+    t.textContent=message;t.classList.add('show');clearTimeout(window.__uiToast);
+    window.__uiToast=setTimeout(()=>t.classList.remove('show'),2200);
+  }
+  function goNext(){
+    const parts=location.pathname.split('/').filter(Boolean);
+    const i=parts.lastIndexOf('index.html');
+    if(i<1) return;
+    const project=parts[i-2];
+    const list=routes[project];
+    if(!list) return;
+    const current=list.indexOf(parts[i-2]);
+    if(current<0) return;
+    const next=list[(current+1)%list.length];
+    location.href='../'+next+'/index.html';
+  }
+  document.addEventListener('DOMContentLoaded',()=>{
+    // Make every visible control produce a real UI result.
+    document.querySelectorAll('input[type="range"]').forEach(range=>{
+      const update=()=>{
+        const progress=range.closest('.player')?.querySelector('.progress > div');
+        if(progress) progress.style.width=range.value+'%';
+      };
+      range.addEventListener('input',update); update();
+    });
+
+    document.querySelectorAll('button').forEach(btn=>{
+      if(btn.closest('.avatar')) return;
+      if(btn.dataset.enhanced) return;
+      btn.dataset.enhanced='1';
+      const label=(btn.textContent||'').replace(/\s+/g,' ').trim().toLowerCase();
+      btn.addEventListener('click',()=>{
+        if(btn.type==='submit' || btn.closest('form')) return;
+        if(label.includes('play') || label.includes('❚❚')){
+          const p=btn.closest('.player'); const v=p?.querySelector('.video');
+          if(v){v.textContent=v.textContent==='❚❚'?'▶':'❚❚';}
+          toast('Playback toggled'); return;
+        }
+        if(label.includes('queue')){ toast('Added to queue'); return; }
+        if(label==='open' || label.includes('get started') || label.includes('continue')){
+          toast('Opening next experience…'); setTimeout(goNext,180); return;
+        }
+        if(label.includes('preview')){toast('Preview opened');return;}
+        if(label.includes('explore')){toast('Experience opened');return;}
+      });
+    });
+
+    document.querySelectorAll('form').forEach(form=>{
+      if(form.dataset.enhanced) return; form.dataset.enhanced='1';
+      form.addEventListener('submit',event=>{
+        event.preventDefault();
+        const input=form.querySelector('input[name="name"]');
+        if(input && !input.value.trim()){input.focus();toast('Please enter your name');return;}
+        if(input) localStorage.setItem('entertainmentUserName',input.value.trim());
+        const msg=form.querySelector('.form-message');
+        if(msg) msg.textContent='Saved successfully!';
+        toast('Details saved successfully');
+        if(input) setTimeout(goNext,350);
+      });
+    });
+
+    // Concert seat map: persistent selection + real checkout transition.
+    const seats=document.querySelector('#seats');
+    if(seats){
+      const saved=JSON.parse(localStorage.getItem('selectedSeats')||'[]');
+      seats.querySelectorAll('.seat').forEach(seat=>{
+        if(saved.includes(seat.textContent.trim())) seat.classList.add('selected');
+        seat.addEventListener('click',()=>{
+          const selected=[...seats.querySelectorAll('.seat.selected')].map(x=>x.textContent.trim());
+          localStorage.setItem('selectedSeats',JSON.stringify(selected));
+          toast(selected.length ? selected.length+' seat(s) selected' : 'No seats selected');
+        });
+      });
+      window.confirmSelection=function(){
+        const selected=[...seats.querySelectorAll('.seat.selected')].map(x=>x.textContent.trim());
+        if(!selected.length){toast('Please select at least one seat');return;}
+        localStorage.setItem('selectedSeats',JSON.stringify(selected));
+        toast('Seats saved — opening checkout'); setTimeout(()=>location.href='../checkout/index.html',350);
+      };
+    }
+
+    document.querySelectorAll('.pay').forEach(btn=>btn.addEventListener('click',()=>{
+      localStorage.setItem('paymentMethod',(btn.textContent||'').trim());
+      toast((btn.textContent||'Payment').trim()+' selected — demo payment successful');
+    }));
+  });
+})();
